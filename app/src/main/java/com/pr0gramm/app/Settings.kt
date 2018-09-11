@@ -32,17 +32,14 @@ class Settings(private val app: Application) : SharedPreferences.OnSharedPrefere
         get() = preferences.getBoolean("pref_feed_type_nsfw", false)
 
     val contentTypeNsfl: Boolean
-        get() = preferences.getBoolean("pref_feed_type_nsfl", false)
+        get() = false
 
     /**
      * Gets a set of all selected content types. This gets called only for logged in users.
      */
     val contentType: EnumSet<ContentType>
         get() {
-            val result = EnumSet.of(ContentType.SFW, ContentType.NSFW, ContentType.NSFL)
-
-            if (!contentTypeNsfl)
-                result.remove(ContentType.NSFL)
+            val result = EnumSet.of(ContentType.SFW, ContentType.NSFW)
 
             if (!contentTypeNsfw)
                 result.remove(ContentType.NSFW)
