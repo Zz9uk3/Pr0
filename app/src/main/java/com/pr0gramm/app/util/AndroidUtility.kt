@@ -13,19 +13,19 @@ import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
 import android.os.Looper
-import android.support.annotation.ColorInt
-import android.support.annotation.ColorRes
-import android.support.annotation.DrawableRes
-import android.support.v4.app.TaskStackBuilder
-import android.support.v4.content.res.ResourcesCompat
-import android.support.v4.graphics.drawable.DrawableCompat
-import android.support.v4.net.ConnectivityManagerCompat
 import android.text.style.BulletSpan
 import android.text.style.LeadingMarginSpan
 import android.util.LruCache
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import androidx.annotation.ColorInt
+import androidx.annotation.ColorRes
+import androidx.annotation.DrawableRes
+import androidx.core.app.TaskStackBuilder
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.net.ConnectivityManagerCompat
 import com.crashlytics.android.Crashlytics
 import com.pr0gramm.app.BuildConfig
 import com.pr0gramm.app.Debug
@@ -295,10 +295,10 @@ object AndroidUtility {
         }
     }
 
-    fun checkNotMainThread() {
+    fun checkNotMainThread(msg: String? = null) {
         if (Looper.getMainLooper().thread === Thread.currentThread()) {
-            logger.error("Expected not to be on main thread")
-            throw IllegalStateException("Must not be called from the main thread.")
+            logger.error("Expected not to be on main thread: {}", msg)
+            throw IllegalStateException("Must not be called from the main thread: $msg")
         }
     }
 }
@@ -316,7 +316,7 @@ fun doInBackground(action: () -> Unit): Completable {
         }
 
         null
-    }, BackgroundScheduler.instance())
+    }, BackgroundScheduler)
 
     return o.toCompletable()
 }

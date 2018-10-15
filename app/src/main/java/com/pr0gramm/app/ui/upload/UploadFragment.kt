@@ -6,14 +6,14 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.support.annotation.MainThread
-import android.support.design.widget.Snackbar
 import android.text.style.BulletSpan
 import android.text.style.LeadingMarginSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.annotation.MainThread
+import com.google.android.material.snackbar.Snackbar
 import com.jakewharton.rxbinding.view.RxView
 import com.jakewharton.rxbinding.widget.textChanges
 import com.pr0gramm.app.R
@@ -49,7 +49,9 @@ import java.io.IOException
 class UploadFragment : BaseFragment("UploadFragment") {
     private val uploadService: UploadService by instance()
     private val rulesService: RulesService by instance()
+
     private val config: Config by instance()
+    private val tagSuggestions: TagSuggestionService by instance()
 
     private val busyContainer: View by bindView(R.id.busy_container)
     private val busyIndicator: BusyIndicator by bindView(R.id.busy_indicator)
@@ -88,7 +90,7 @@ class UploadFragment : BaseFragment("UploadFragment") {
         }
 
         // enable auto-complete
-        TagInputView.setup(tags)
+        tagSuggestions.setupView(tags)
 
         // add the small print to the view
         val smallPrintView = view.find<TextView>(R.id.small_print)
@@ -97,8 +99,7 @@ class UploadFragment : BaseFragment("UploadFragment") {
 
         // react on change in the tag input window
         tags.textChanges().subscribe { text ->
-            val lower = text.toString().toLowerCase()
-            tagOpinionHint.visible = config.questionableTags.any { lower.contains(it) }
+            tagOpinionHint.visible = tagSuggestions.containsQuestionableTag(text)
         }
     }
 
@@ -172,7 +173,8 @@ class UploadFragment : BaseFragment("UploadFragment") {
         val type = selectedContentType
 
         val tags = tags.text.split('#', ',')
-                .mapNotNull { it.trim().takeIf { it.isNotEmpty() } }
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
                 .toSet()
 
         val uploadInfo = uploadInfo

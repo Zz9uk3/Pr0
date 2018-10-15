@@ -6,8 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
-import android.support.v4.app.FragmentActivity
-import android.support.v4.content.FileProvider
+import androidx.core.content.FileProvider
 import com.pr0gramm.app.BuildConfig
 import com.pr0gramm.app.MoshiInstance
 import com.pr0gramm.app.Settings
@@ -20,7 +19,6 @@ import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.http.GET
 import rx.Observable
-import rx.android.schedulers.AndroidSchedulers
 import rx.functions.Action1
 import java.io.File
 import java.io.FileInputStream
@@ -64,7 +62,7 @@ class UpdateChecker {
             check(endpoint)
                     .doOnError { err -> logger.warn("Could not check for update at {}: {}", endpoint, err.toString()) }
                     .onErrorResumeEmpty()
-                    .subscribeOn(BackgroundScheduler.instance())
+                    .subscribeOn(BackgroundScheduler)
         }
 
         return updates.take(1)
@@ -74,7 +72,7 @@ class UpdateChecker {
         return Retrofit.Builder()
                 .baseUrl(endpoint)
                 .addConverterFactory(converterFactory)
-                .addCallAdapterFactory(RxJavaCallAdapterFactory.createWithScheduler(BackgroundScheduler.instance()))
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.createWithScheduler(BackgroundScheduler))
                 .build()
     }
 
@@ -106,15 +104,15 @@ class UpdateChecker {
         }
 
 
-        fun download(activity: FragmentActivity, update: Update) = with(activity.directKodein) {
+        fun download(activity: androidx.fragment.app.FragmentActivity, update: Update) = with(activity.directKodein) {
             val downloadService = instance<DownloadService>()
             val notificationService = instance<NotificationService>()
 
             val progress = downloadService
-                    .downloadUpdateFile(update.apk)
-                    .subscribeOn(BackgroundScheduler.instance())
-                    .unsubscribeOn(BackgroundScheduler.instance())
-                    .observeOn(AndroidSchedulers.mainThread())
+                    .downloadUpdateFile(Uri.parse(update.apk))
+                    .subscribeOn(BackgroundScheduler)
+                    .unsubscribeOn(BackgroundScheduler)
+                    .observeOn(MainThreadScheduler)
                     .share()
 
             // install on finish

@@ -11,7 +11,6 @@ import com.pr0gramm.app.services.Track
 import com.pr0gramm.app.sync.SyncJob
 import com.pr0gramm.app.sync.SyncStatisticsJob
 import com.pr0gramm.app.ui.ActivityErrorHandler
-import com.pr0gramm.app.ui.TagInputView
 import com.pr0gramm.app.ui.dialogs.ErrorDialogFragment.Companion.globalErrorDialogHandler
 import com.pr0gramm.app.util.*
 import com.pr0gramm.app.util.AndroidUtility.buildVersionCode
@@ -54,7 +53,6 @@ open class ApplicationClass : Application(), KodeinAware {
 
         Settings.initialize(this)
         Track.initialize(this)
-        TagInputView.initialize(this)
 
         JobConfig.setLogcatEnabled(BuildConfig.DEBUG)
         JobConfig.addLogger(SimpleJobLogger())
@@ -107,7 +105,7 @@ open class ApplicationClass : Application(), KodeinAware {
         doInBackground {
             if (BuildConfig.DEBUG) {
                 // test ads for debug, see https://developers.google.com/admob/android/test-ads
-                MobileAds.initialize(this, "ca-app-pub-3940256099942544/6300978111")
+                MobileAds.initialize(this, "ca-app-pub-3940256099942544~3347511713")
             } else {
                 MobileAds.initialize(this, "ca-app-pub-2308657767126505~4138045673")
             }

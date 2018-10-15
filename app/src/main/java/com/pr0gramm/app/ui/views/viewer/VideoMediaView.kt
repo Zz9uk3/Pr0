@@ -8,13 +8,13 @@ import android.media.AudioManager
 import android.media.AudioManager.AUDIOFOCUS_LOSS
 import android.media.AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
 import android.os.Build
-import android.support.v4.content.ContextCompat
-import android.support.v4.util.LruCache
 import android.view.LayoutInflater
 import android.view.View
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
+import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.jakewharton.rxbinding.view.detaches
 import com.pr0gramm.app.R
 import com.pr0gramm.app.Settings
@@ -28,13 +28,12 @@ import com.pr0gramm.app.ui.views.viewer.video.ExoVideoPlayer
 import com.pr0gramm.app.ui.views.viewer.video.RxVideoPlayer
 import com.pr0gramm.app.ui.views.viewer.video.VideoPlayer
 import com.pr0gramm.app.util.AndroidUtility
-import com.pr0gramm.app.util.edit
+import com.pr0gramm.app.util.MainThreadScheduler
 import com.pr0gramm.app.util.hideViewEndAction
 import com.pr0gramm.app.util.logger
 import com.trello.rxlifecycle.android.RxLifecycleAndroid
 import kotterknife.bindView
 import org.kodein.di.erased.instance
-import rx.android.schedulers.AndroidSchedulers
 import java.util.concurrent.TimeUnit
 
 @SuppressLint("ViewConstructor")
@@ -57,12 +56,12 @@ class VideoMediaView(config: MediaView.Config) : AbstractProgressMediaView(confi
     private var droppedFramesShown: Boolean = false
 
     init {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && settings.useExoPlayer) {
+        videoPlayer = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && settings.useExoPlayer) {
             logger.info("Using exo player to play videos.")
-            videoPlayer = ExoVideoPlayer(context, config.audio, videoPlayerParent)
+            ExoVideoPlayer(context, config.audio, videoPlayerParent)
         } else {
             logger.info("Falling back on simple android video player.")
-            videoPlayer = AndroidVideoPlayer(context, videoPlayerParent)
+            AndroidVideoPlayer(context, videoPlayerParent)
         }
 
         muteButtonView = LayoutInflater
@@ -78,8 +77,8 @@ class VideoMediaView(config: MediaView.Config) : AbstractProgressMediaView(confi
         detaches().subscribe { videoPlayer.videoCallbacks = null }
 
         videoPlayer.buffering()
-                .sample(500, TimeUnit.MILLISECONDS, AndroidSchedulers.mainThread())
-                .observeOn(AndroidSchedulers.mainThread())
+                .sample(500, TimeUnit.MILLISECONDS, MainThreadScheduler)
+                .observeOn(MainThreadScheduler)
                 .compose(RxLifecycleAndroid.bindView<Boolean>(this))
                 .subscribe { this.showBusyIndicator(it) }
 
@@ -323,7 +322,7 @@ class VideoMediaView(config: MediaView.Config) : AbstractProgressMediaView(confi
     companion object {
         private val logger = logger("VideoMediaView")
 
-        private val seekToCache = LruCache<Long, ExpiringTimestamp>(16)
+        private val seekToCache = androidx.collection.LruCache<Long, ExpiringTimestamp>(16)
 
         private const val KEY_LAST_UNMUTED_VIDEO = "VideoMediaView.lastUnmutedVideo"
     }

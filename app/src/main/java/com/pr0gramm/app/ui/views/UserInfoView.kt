@@ -9,7 +9,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import com.jakewharton.rxbinding.view.clicks
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.pr0gramm.app.Duration
 import com.pr0gramm.app.Instant
 import com.pr0gramm.app.R
@@ -25,35 +25,22 @@ import java.util.concurrent.TimeUnit
  */
 @SuppressLint("ViewConstructor")
 class UserInfoView(context: Context, private val userActionListener: UserActionListener) : FrameLayout(context) {
-    private val username: UsernameView
-    private val benis: TextView
-    private val favorites: TextView
-    private val comments: TextView
-    private val tags: TextView
-    private val uploads: TextView
-    private val extraInfo: TextView
-    private val writeNewMessage: View
-    private val writeNewMessageContainer: View
-    private val badgesContainer: ViewGroup
-    private val userTypeName: TextView
-    private val showCommentsContainer: View
-
     init {
         View.inflate(context, R.layout.user_info_cell_v2, this)
-        username = findViewById(R.id.username)
-        benis = findViewById(R.id.kpi_benis)
-        favorites = findViewById(R.id.kpi_favorites)
-        comments = findViewById(R.id.kpi_comments)
-        tags = findViewById(R.id.kpi_tags)
-        uploads = findViewById(R.id.kpi_uploads)
-        extraInfo = findViewById(R.id.user_extra_info)
-        writeNewMessage = findViewById(R.id.action_new_message)
-        writeNewMessageContainer = findViewById(R.id.action_new_message_container)
-        badgesContainer = findViewById(R.id.badges_container)
-        userTypeName = findViewById(R.id.user_type_name)
-
-        showCommentsContainer = comments.parent as View
     }
+
+    private val username: UsernameView = find(R.id.username)
+    private val benis: TextView = find(R.id.kpi_benis)
+    private val favorites: TextView = find(R.id.kpi_favorites)
+    private val comments: TextView = find(R.id.kpi_comments)
+    private val tags: TextView = find(R.id.kpi_tags)
+    private val uploads: TextView = find(R.id.kpi_uploads)
+    private val extraInfo: TextView = find(R.id.user_extra_info)
+    private val writeNewMessage: View = find(R.id.action_new_message)
+    private val writeNewMessageTitle: View = find(R.id.action_new_message_title)
+    private val badgesContainer: androidx.recyclerview.widget.RecyclerView = find(R.id.badges_container)
+    private val userTypeName: TextView = find(R.id.user_type_name)
+    private val showCommentsContainer: View = comments.parent as View
 
     fun updateUserInfo(info: Api.Info, comments: List<Api.UserComments.UserComment>, myself: Boolean) {
         // user info
@@ -72,7 +59,7 @@ class UserInfoView(context: Context, private val userActionListener: UserActionL
         showCommentsContainer.visible = comments.isNotEmpty()
 
         writeNewMessage.visible = !myself
-        writeNewMessageContainer.visible = !myself
+        writeNewMessageTitle.visible = !myself
 
         // open message dialog for user
         writeNewMessage.setOnClickListener {
@@ -97,21 +84,19 @@ class UserInfoView(context: Context, private val userActionListener: UserActionL
             // remove the view
             (favorites.parent as View).visibility = View.GONE
         }
-        
-        badgesContainer.removeAllViews()
 
+        val badges = mutableListOf<BadgeInfo>()
         // add badge for "x comments"
         (info.commentCount / 1000).takeIf { it > 0 }?.let {
-            appendBadgeView(
+            badges += BadgeInfo(
                     "comments.png",
                     context.getString(R.string.badge_comments, it.toString()),
-                    text = "${it}k",
-                    textColor = Color.BLACK)
+                    text = "${it}k", textColor = Color.BLACK)
         }
 
         if (info.user.itemDeleteCount > 0) {
             val count = info.user.itemDeleteCount
-            appendBadgeView(
+            badges += BadgeInfo(
                     "itemdelete.png",
                     context.getString(R.string.badge_deleted_items, count),
                     text = "$count", textColor = Color.WHITE)
@@ -119,7 +104,7 @@ class UserInfoView(context: Context, private val userActionListener: UserActionL
 
         if (info.user.commentDeleteCount > 0) {
             val count = info.user.commentDeleteCount
-            appendBadgeView(
+            badges += BadgeInfo(
                     "commentdelete.png",
                     context.getString(R.string.badge_deleted_comments, count),
                     text = "$count", textColor = Color.WHITE)
@@ -128,14 +113,25 @@ class UserInfoView(context: Context, private val userActionListener: UserActionL
         // add badge for "x years on pr0gramm"
         val years = Duration.between(Instant.now(), info.user.registered).convertTo(TimeUnit.DAYS) / 365
         if (years > 0) {
-            appendBadgeView(
+            badges += BadgeInfo(
                     "years.png",
                     context.getString(R.string.badge_time, years.toString()),
-                    text = years.toString())
+                    text = years.toString(), textColor = Color.WHITE)
         }
 
-        info.badges.forEach { badge ->
-            appendBadgeView(badge.image, badge.description ?: "")
+        info.badges.mapTo(badges) { badge ->
+            BadgeInfo(badge.image, badge.description ?: "")
+        }
+
+        badgesContainer.adapter = BadgeAdapter(badges)
+        badgesContainer.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(context, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false)
+        badgesContainer.isHorizontalFadingEdgeEnabled = true
+        badgesContainer.setFadingEdgeLength(AndroidUtility.dp(context, 24))
+
+        if (badges.isNotEmpty()) {
+            // scroll to the end after a short delay.
+            val r = { badgesContainer.smoothScrollToPosition(badges.size - 1) }
+            badgesContainer.postDelayed(r, 500)
         }
 
         // info about banned/register date
@@ -153,45 +149,6 @@ class UserInfoView(context: Context, private val userActionListener: UserActionL
         }
     }
 
-    /**
-     * Deflates and composes a badge view and adds that view to the
-     * actionsContainer.
-     */
-    private fun appendBadgeView(image: String, description: String,
-                                text: String? = null,
-                                textColor: Int? = null) {
-
-        val view = layoutInflater.inflate(R.layout.badge, badgesContainer, false)
-
-        view.clicks().subscribe {
-            Toast.makeText(context, description, Toast.LENGTH_SHORT).show()
-        }
-
-        val textView = view.find<TextView>(R.id.text)
-        if (text == null) {
-            textView.removeFromParent()
-        } else {
-            textView.text = text
-            textColor?.let { textView.setTextColor(it) }
-        }
-
-        val imageView = view.find<ImageView>(R.id.image)
-        if (!isInEditMode) {
-            val picasso = context.directKodein.instance<Picasso>()
-
-            val localImageId = knownImages[image]
-            if (localImageId != null) {
-                imageView.setImageResource(localImageId)
-            } else {
-                val url = UriHelper.of(context).badgeImageUrl(image)
-                picasso.load(url).into(imageView)
-            }
-        }
-
-        // add the view to parent
-        badgesContainer.addView(view)
-    }
-
     interface UserActionListener {
         fun onWriteMessageClicked(userId: Int, name: String)
         fun onUserFavoritesClicked(name: String)
@@ -199,18 +156,77 @@ class UserInfoView(context: Context, private val userActionListener: UserActionL
         fun onShowUploadsClicked(name: String)
     }
 
-    private val knownImages = mapOf(
-            "years.png" to R.drawable.badge_years,
-            "comments.png" to R.drawable.badge_comments,
-            "social-share.png" to R.drawable.badge_social,
-            "secret-santa-2014.png" to R.drawable.badge_secret_santa,
-            "benitrat0r-lose.png" to R.drawable.badge_benitrator_lose,
-            "benitrat0r-win.png" to R.drawable.badge_benitrator_win,
-            "contract.png" to R.drawable.badge_contract,
-            "connect4-red.png" to R.drawable.badge_connect4_red,
-            "connect4-blue.png" to R.drawable.badge_connect4_blue,
-            "krebs-donation.png" to R.drawable.badge_krebs,
-            "itemdelete.png" to R.drawable.deleted_item,
-            "commentdelete.png" to R.drawable.deleted_comment
-    )
+    private data class BadgeInfo(val image: String, val description: String,
+                                 val text: String? = null,
+                                 val textColor: Int = Color.WHITE)
+
+    private class BadgeAdapter(val badges: List<BadgeInfo>) : androidx.recyclerview.widget.RecyclerView.Adapter<BadgeViewHolder>() {
+        override fun onCreateViewHolder(parent: ViewGroup, idx: Int): BadgeViewHolder {
+            val view = parent.layoutInflater.inflate(R.layout.badge, parent, false)
+            return BadgeViewHolder(view)
+        }
+
+        override fun onBindViewHolder(holder: BadgeViewHolder, idx: Int) {
+            holder.set(badges[idx], idx == 0)
+        }
+
+        override fun getItemCount(): Int {
+            return badges.size
+        }
+    }
+
+    private class BadgeViewHolder(view: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view) {
+        private val imageView: ImageView = view.find(R.id.image)
+        private val textView: TextView = view.find(R.id.text)
+
+        fun set(badge: BadgeInfo, firstItem: Boolean) {
+            if (badge.text == null) {
+                textView.visible = false
+            } else {
+                textView.visible = true
+                textView.text = badge.text
+                textView.setTextColor(badge.textColor)
+            }
+
+            itemView.setOnClickListener {
+                Toast.makeText(itemView.context, badge.description, Toast.LENGTH_SHORT).show()
+            }
+
+            if (!itemView.isInEditMode) {
+                val context = itemView.context
+                val picasso = context.directKodein.instance<Picasso>()
+
+                val localImageId = knownImages[badge.image]
+                if (localImageId != null) {
+                    imageView.setImageResource(localImageId)
+                } else {
+                    val url = UriHelper.of(context).badgeImageUrl(badge.image)
+                    picasso.load(url).into(imageView)
+                }
+            }
+
+            // hack, if it is the first item, we need to add 12dp of left margin
+            val margin = if (firstItem) AndroidUtility.dp(itemView.context, 12) else 0
+            (itemView.layoutParams as? MarginLayoutParams)?.leftMargin = margin
+        }
+
+        companion object {
+            private val knownImages = mapOf(
+                    "years.png" to R.drawable.badge_years,
+                    "comments.png" to R.drawable.badge_comments,
+                    "social-share.png" to R.drawable.badge_social,
+                    "secret-santa-2014.png" to R.drawable.badge_secret_santa,
+                    "benitrat0r-lose.png" to R.drawable.badge_benitrator_lose,
+                    "benitrat0r-win.png" to R.drawable.badge_benitrator_win,
+                    "contract.png" to R.drawable.badge_contract,
+                    "connect4-red.png" to R.drawable.badge_connect4_red,
+                    "connect4-blue.png" to R.drawable.badge_connect4_blue,
+                    "krebs-donation.png" to R.drawable.badge_krebs,
+                    "itemdelete.png" to R.drawable.deleted_item,
+                    "commentdelete.png" to R.drawable.deleted_comment,
+                    "art13.png" to R.drawable.badge_art13
+            )
+        }
+    }
+
 }

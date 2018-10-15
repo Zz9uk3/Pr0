@@ -12,20 +12,18 @@ import android.graphics.Canvas
 import android.net.Uri
 import android.os.Bundle
 import android.os.PowerManager
-import android.support.annotation.ColorInt
-import android.support.annotation.ColorRes
-import android.support.annotation.LayoutRes
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentManager
-import android.support.v4.app.FragmentTransaction
-import android.support.v4.content.ContextCompat
-import android.support.v4.util.LruCache
-import android.support.v7.widget.RecyclerView
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.annotation.ColorInt
+import androidx.annotation.ColorRes
+import androidx.annotation.LayoutRes
+import androidx.collection.LruCache
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.RecyclerView
 import com.pr0gramm.app.BuildConfig
 import com.pr0gramm.app.ui.dialogs.ignoreError
 import org.kodein.di.DKodein
@@ -34,7 +32,6 @@ import org.kodein.di.KodeinAware
 import org.kodein.di.direct
 import org.slf4j.Logger
 import rx.*
-import rx.android.schedulers.AndroidSchedulers
 import rx.functions.Action1
 import rx.schedulers.Schedulers
 import rx.subjects.BehaviorSubject
@@ -58,7 +55,7 @@ inline fun <T> createObservable(mode: Emitter.BackpressureMode = Emitter.Backpre
 
 fun <T> Observable<T>.onErrorResumeEmpty(): Observable<T> = ignoreError()
 
-fun <T> Observable<T>.subscribeOnBackground(): Observable<T> = subscribeOn(BackgroundScheduler.instance())
+fun <T> Observable<T>.subscribeOnBackground(): Observable<T> = subscribeOn(BackgroundScheduler)
 
 fun <T> Observable<T>.observeOnMainThread(firstIsSync: Boolean = false): Observable<T> {
     if (firstIsSync) {
@@ -66,7 +63,7 @@ fun <T> Observable<T>.observeOnMainThread(firstIsSync: Boolean = false): Observa
         return shared.take(1).concatWith(shared.skip(1).observeOnMainThread())
     }
 
-    return observeOn(AndroidSchedulers.mainThread())
+    return observeOn(MainThreadScheduler)
 }
 
 
@@ -128,12 +125,6 @@ inline fun readStream(stream: InputStream, bufferSize: Int = 16 * 1024, fn: (Byt
 
         fn(buffer, read)
     }
-}
-
-inline fun SharedPreferences.edit(fn: SharedPreferences.Editor.() -> Unit) {
-    val editor = edit()
-    editor.fn()
-    editor.apply()
 }
 
 inline fun <R> PowerManager.WakeLock.use(timeValue: Long, timeUnit: TimeUnit, fn: () -> R): R {
@@ -382,17 +373,6 @@ fun Context.dip2px(dpValue: Float): Float {
     return dpValue * density
 }
 
-inline fun FragmentManager.transaction(now: Boolean = false, block: FragmentTransaction.() -> Unit) {
-    val tr = beginTransaction()
-    tr.block()
-
-    if (now) {
-        tr.commitNow()
-    } else {
-        tr.commit()
-    }
-}
-
 /**
  * Converts a boolean to either 'one' or 'zero'.
  */
@@ -581,4 +561,8 @@ fun Closeable?.closeQuietly() {
     } catch (err: Exception) {
         // ignored
     }
+}
+
+inline fun SharedPreferences.getString(key: String): String? {
+    return getString(key, null)
 }

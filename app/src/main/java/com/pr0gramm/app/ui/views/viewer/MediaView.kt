@@ -9,12 +9,12 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
-import android.support.annotation.LayoutRes
-import android.support.v4.content.ContextCompat
 import android.view.*
 import android.view.GestureDetector.SimpleOnGestureListener
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.annotation.LayoutRes
+import androidx.core.content.ContextCompat
 import com.jakewharton.rxbinding.view.attachEvents
 import com.jakewharton.rxbinding.view.detaches
 import com.pr0gramm.app.BuildConfig
@@ -32,7 +32,6 @@ import com.trello.rxlifecycle.android.RxLifecycleAndroid
 import org.kodein.di.erased.instance
 import org.slf4j.Logger
 import rx.Observable
-import rx.android.schedulers.AndroidSchedulers
 import rx.functions.Action1
 import rx.subjects.BehaviorSubject
 import rx.subjects.ReplaySubject
@@ -165,9 +164,9 @@ abstract class MediaView(protected val config: MediaView.Config, @LayoutRes layo
 
     protected fun <T> backgroundBindView(): Observable.Transformer<T, T> {
         return Observable.Transformer {
-            it.subscribeOn(BackgroundScheduler.instance())
-                    .unsubscribeOn(BackgroundScheduler.instance())
-                    .observeOn(AndroidSchedulers.mainThread())
+            it.subscribeOn(BackgroundScheduler)
+                    .unsubscribeOn(BackgroundScheduler)
+                    .observeOn(MainThreadScheduler)
                     .compose(RxLifecycleAndroid.bindView<T>(this))
         }
     }
@@ -205,7 +204,7 @@ abstract class MediaView(protected val config: MediaView.Config, @LayoutRes layo
         val rxFancyPreviewImage = info.fancy?.asObservable() ?: Observable.fromCallable {
             logger.debug("Requesting fancy thumbnail on background thread now.")
             fancyThumbnailGenerator.fancyThumbnail(info.previewUri, info.aspect)
-        }.subscribeOn(BackgroundScheduler.instance())
+        }.subscribeOn(BackgroundScheduler)
 
         rxFancyPreviewImage
                 .onErrorResumeNext { err ->

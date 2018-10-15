@@ -8,8 +8,8 @@ import android.preference.ListPreference
 import android.preference.Preference
 import android.preference.PreferenceGroup
 import android.preference.PreferenceScreen
-import android.support.v7.app.AppCompatActivity
 import android.view.MenuItem
+import androidx.appcompat.app.AppCompatActivity
 import com.google.android.exoplayer2.mediacodec.MediaCodecUtil
 import com.pr0gramm.app.BuildConfig
 import com.pr0gramm.app.Instant
@@ -98,6 +98,16 @@ class SettingsActivity : BaseAppCompatActivity("SettingsActivity") {
 
             if (!userService.userIsAdmin) {
                 hidePreferenceByName("pref_show_content_type_flag")
+            }
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+                // only allowed on newer versions
+                hidePreferenceByName("pref_use_exo_player")
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                // only allowed on older versions
+                hidePreferenceByName("pref_use_exo_player")
             }
         }
 

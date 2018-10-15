@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import android.provider.Settings
+import androidx.core.content.edit
 import com.pr0gramm.app.BuildConfig
 import com.pr0gramm.app.MoshiInstance
 import com.pr0gramm.app.adapter
@@ -40,7 +41,7 @@ class ConfigService(context: Application,
     init {
         this.deviceHash = makeUniqueIdentifier(context, preferences)
 
-        val jsonCoded = preferences.getString(PREF_DATA_KEY, "{}")
+        val jsonCoded = preferences.getString(PREF_DATA_KEY) ?: "{}"
         this.configState = loadState(jsonCoded)
 
         publishState()
@@ -114,7 +115,7 @@ class ConfigService(context: Application,
      * Observes the config. The config changes are not observed on any particual thread.
      */
     fun observeConfig(): Observable<Config> {
-        return configSubject
+        return configSubject.observeOn(BackgroundScheduler)
     }
 
     fun config(): Config {
